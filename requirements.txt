@@ -8,3 +8,5 @@ scipy
 joblib
 xgboost
 imbalanced-learn
+plotly.graph_objects
+plotly.express
