@@ -5,6 +5,8 @@ import numpy as np
 from datetime import datetime
 import plotly.graph_objects as go
 import plotly.express as px
+from fpdf import FPDF
+import tempfile
 import warnings
 warnings.filterwarnings('ignore')
 # configration de la page
@@ -57,9 +59,9 @@ st.markdown('''
  .welcom-message{
     background: linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%);
     padding:2rem;
-    border-radius:15;  
+    border-radius:15px;  
     margin-bottom:2rem;
-    border-left: 5px solid #4CAF50        
+    border-left: 5px solid #4CAF50 ;       
      }
  </style>           
 ''',unsafe_allow_html=True)
@@ -85,17 +87,17 @@ st.markdown('''
  .friendly-info{
     background: #cce6ff;
     padding:2rem;
-    border-radius:15;  
-    border-lef: 5px solid # 2196F3;
-    margin : 1.5rem 0
+    border-radius:15px;  
+    border-left: 5px solid #2196F3;
+    margin : 1.5rem 0;
                  
      }
  .encouragement{
      background: #cce6ff;
     padding:2rem;
-    border-radius:15;  
-    border-lef: 5px solid # 2196F3;
-    margin : 1.5rem 0
+    border-radius:15px;  
+    border-left: 5px solid #2196F3;
+    margin : 1.5rem 0;
                  
      }
  </style>           
@@ -216,198 +218,96 @@ st.markdown('''
 ''',unsafe_allow_html=True)
 if submit:
     if not prenom:
-        st.warning('Pour personnaliser votre expérience,pourriez-vous nous dire comment vous appeler ?')
+        st.warning("Pour personnaliser votre expérience, pourriez-vous nous dire comment vous appeler ?")
     else:
-        new_data = pd.DataFrame([[preg,Gluc,Blood,skint,insulin,BMI,Diabete,age]],columns=features)
-        with st.spinner('Analyse de votre profil est en cours ..... cela ne prendra que quelques secondes !'):
+        new_data = pd.DataFrame([[preg, Gluc, Blood, skint, insulin, BMI, Diabete, age]], columns=features)
+        
+        with st.spinner("Analyse de votre profil en cours..."):
             scaled_data = scaler.transform(new_data)
             prediction = int(model.predict(scaled_data)[0])
             proba = model.predict_proba(scaled_data)[0]
-            risk_percentage = proba[1]*100
-        st.markdown('---')
-        st.markdown(f'### 🎯 Votre santé,{prenom}')
-        col1,col2 = st.columns([2,2])
-        # bloc
+            risk_percentage = proba[1] * 100
+
+        st.markdown("---")
+        st.markdown(f"### 🎯 Votre santé, {prenom}")
+        col1, col2 = st.columns([2, 2])
+
         with col1:
-            risk_html = ''
             if prediction == 1:
-                risk_html = f'''
-                <div class='risk-high'>
-                <h3>🚨 Attention recommandée</h3>
-                <p><strong>{prenom} </strong>, Votre profil suggère un risque plus élevée</p>
-                <p> Probalilité estimée:{risk_percentage:.1f}%</p>
-                <p><em>Mais ne nous inquiétez pas,c'est le moment parfait pour agir  !</em></p>
-                </div>'''
-                st.markdown(risk_html,unsafe_allow_html=True)
-                st.markdown('''
-                            ### ⭐ Vos prochaines étapes
-                            **Ce que nous recommandons :**
-                            - 🩺 **Consultez votre médecin** : Il pourra confirmer et vous guider
-                            - 🔬 **Analyses complémentaires** : Pour une vision complète
-                            - 💪 **Restez positif** : Beaucoup de facteurs sont modifables !
-                            - ℹ️ **Informez-vous** : Plus vous en savez,mieux vous pouvez agir
-                            
-                            ''')
+                st.markdown(f"""
+                    <div class='risk-high'>
+                    <h3>🚨 Attention recommandée</h3>
+                    <p><strong>{prenom}</strong>, votre profil suggère un risque plus élevé</p>
+                    <p>Probabilité estimée : {risk_percentage:.1f}%</p>
+                    <p><em>Mais ne vous inquiétez pas, c'est le moment parfait pour agir !</em></p>
+                    </div>
+                """, unsafe_allow_html=True)
             else:
-                risk_html = f'''
-                <div class='risk-low'>
-                <h3>🙌 Excellent nouvelle !</h3>
-                <p><strong>{prenom} </strong>, Votre profil suggère un risque plus faible</p>
-                <p> Probalilité estimée:{risk_percentage:.1f}%</p>
-                <p><em>Continuez sur cette belle lancée !</em></p>
-                </div>'''
-                st.markdown(risk_html,unsafe_allow_html=True)
-                st.markdown('''
-                            ### ⭐ Continuez comme ça !
-                            **Pour maintenir ce beau résultat :**
-                            - 🥗 **Alimentation équilibrée** : Vous êtes sur la bonne voie
-                            - 🏋️ **Activité physique** : Gargez le rythme
-                            - 🩺 **Suivi régulier** : un contrôle annuel reste importante 
-                            - 😊 **Prenez soin de vous** : votre santé est votre trésor
-                            
-                            ''')
+                st.markdown(f"""
+                    <div class='risk-low'>
+                    <h3>🙌 Excellente nouvelle !</h3>
+                    <p><strong>{prenom}</strong>, votre profil suggère un risque plus faible</p>
+                    <p>Probabilité estimée : {risk_percentage:.1f}%</p>
+                    <p><em>Continuez sur cette belle lancée !</em></p>
+                    </div>
+                """, unsafe_allow_html=True)
+
         with col2:
-            # Section des indicateurs de santé avec une approche plus humaine
-            st.markdown("### 📊 Vos indicateurs de santé personnels")
-    
-            # Création d'un tableau de bord personnalisé
+            st.markdown("### 📊 Vos indicateurs de santé")
             health_indicators = {
-                'Indicateur de santé': ['Taux de glucose', 'Indice de masse corporelle', 'Âge', 'Tension artérielle', 'Niveau d\'insuline'],
+                'Indicateur de santé': ['Taux de glucose', 'IMC', 'Âge', 'Tension artérielle', 'Insuline'],
                 'Votre valeur': [Gluc, BMI, age, Blood, insulin],
                 'Statut': []
             }
 
-            # Évaluation personnalisée avec des messages plus humains
-            for indicator, current_value in zip(health_indicators['Indicateur de santé'], health_indicators['Votre valeur']):
+            for indicator, value in zip(health_indicators['Indicateur de santé'], health_indicators['Votre valeur']):
                 if indicator == 'Taux de glucose':
-                    if current_value <= 100:
-                        status = '✅ Excellent'
-                    elif current_value <= 125:
-                        status = '⚠️ À surveiller'
-                    else:
-                        status = '🔴 Nécessite attention'
-                
-                elif indicator == 'Indice de masse corporelle':
-                    if 18.5 <= current_value <= 24.9:
-                        status = '✅ Dans la norme'
-                    elif current_value <= 29.9:
-                        status = '⚠️ Légèrement élevé'
-                    else:
-                        status = '🔴 Préoccupant'
-                
+                    status = '✅ Excellent' if value <= 100 else '⚠️ À surveiller' if value <= 125 else '🔴 Attention'
+                elif indicator == 'IMC':
+                    status = '✅ Normal' if 18.5 <= value <= 24.9 else '⚠️ Surpoids' if value <= 29.9 else '🔴 Obésité'
                 elif indicator == 'Âge':
-                    if current_value <= 35:
-                        status = '💪 Jeune adulte'
-                    elif current_value <= 55:
-                        status = '🧑‍💼 Adulte'
-                    else:
-                        status = '👴 Senior'
-                
+                    status = '💪 Jeune' if value <= 35 else '🧑‍💼 Adulte' if value <= 55 else '👴 Senior'
                 elif indicator == 'Tension artérielle':
-                    if current_value <= 120:
-                        status = '✅ Parfaite'
-                    elif current_value <= 139:
-                        status = '⚠️ Limite haute'
-                    else:
-                        status = '🔴 Trop élevée'
-                
-                else:  # Niveau d'insuline
-                    if current_value <= 25:
-                        status = '✅ Normal'
-                    elif current_value <= 100:
-                        status = '⚠️ Modérément élevé'
-                    else:
-                        status = '🔴 Très élevé'
-                
+                    status = '✅ OK' if value <= 120 else '⚠️ Limite' if value <= 139 else '🔴 Élevée'
+                else:  # Insuline
+                    status = '✅ Normal' if value <= 25 else '⚠️ Modérée' if value <= 100 else '🔴 Élevée'
                 health_indicators['Statut'].append(status)
-        
-            # Affichage du tableau avec style amélioré
-            health_df = pd.DataFrame(health_indicators)
-            st.dataframe(
-                health_df[['Indicateur de santé', 'Votre valeur', 'Statut']], 
-                use_container_width=True, 
-                hide_index=True
-            )
-        
-        # Section d'explication détaillée avec un ton plus personnel
+
+            st.dataframe(pd.DataFrame(health_indicators), use_container_width=True, hide_index=True)
+
         with st.expander("🔍 Décryptage complet de votre profil santé"):
-            explanation_col1, explanation_col2 = st.columns(2)
-        
-            with explanation_col1:
-                st.markdown("### 📋 Récapitulatif de vos données")
-                user_data = new_data.copy()
-                user_data.columns = [
-                    'Nombre de grossesses', 'Glucose sanguin', 'Tension artérielle', 
-                    'Épaisseur du pli cutané', 'Insuline', 'IMC', 'Historique familial', 'Âge'
-                ]
-                
-                # Formatage plus lisible des données
-                st.dataframe(user_data.style.format({
-                    'Nombre de grossesses': '{:.0f}',
-                    'Glucose sanguin': '{:.0f} mg/dL',
-                    'Tension artérielle': '{:.0f} mmHg',
-                    'Épaisseur du pli cutané': '{:.0f} mm',
+            col_a, col_b = st.columns(2)
+
+            with col_a:
+                st.markdown("### 📋 Récapitulatif")
+                df = new_data.copy()
+                df.columns = ['Grossesses', 'Glucose', 'Tension', 'Pli cutané', 'Insuline', 'IMC', 'H. familial', 'Âge']
+                st.dataframe(df.style.format({
+                    'Glucose': '{:.0f} mg/dL',
+                    'Tension': '{:.0f} mmHg',
+                    'Pli cutané': '{:.0f} mm',
                     'Insuline': '{:.0f} μIU/mL',
                     'IMC': '{:.1f}',
-                    'Historique familial': '{:.3f}',
+                    'H. familial': '{:.2f}',
                     'Âge': '{:.0f} ans'
                 }), use_container_width=True)
-        
-            with explanation_col2:
-                st.markdown("### 🎯 Analyse détaillée des risques")
-                risk_analysis = pd.DataFrame({
-                    'Niveau de risque': ['Risque faible', 'Risque nécessitant vigilance'],
-                    'Probabilité calculée': [f"{proba[0]*100:.1f}%", f"{proba[1]*100:.1f}%"],
-                    'Recommandation': ['Maintenir le cap', 'Surveillance recommandée']
+
+            with col_b:
+                st.markdown("### 🎯 Analyse du risque")
+                risk_data = pd.DataFrame({
+                    "Niveau de risque": ["Faible", "Vigilance"],
+                    "Probabilité": [f"{proba[0]*100:.1f}%", f"{proba[1]*100:.1f}%"],
+                    "Recommandation": ["Maintien", "Suivi médical"]
                 })
-                st.dataframe(risk_analysis, use_container_width=True, hide_index=True)
-        
-                st.markdown("### 💬 Mon analyse personnalisée")
+                st.dataframe(risk_data, use_container_width=True, hide_index=True)
+
+                st.markdown("### 💬 Mon analyse")
                 if risk_percentage < 50:
-                    st.success("""
-                    🌟 **Excellente nouvelle !** 
-                    Votre profil de santé est très rassurant. Vos indicateurs sont globalement dans les bonnes normes. 
-                    Continuez sur cette voie avec vos habitudes saines !
-                    """)
+                    st.success("🌟 Votre profil est rassurant. Continuez vos bonnes habitudes !")
                 elif 50 <= risk_percentage < 70:
-                    st.warning("""
-                    ⚠️ **Attention bienveillante** 
-                    Votre profil mérite qu'on s'y attarde un peu. Quelques ajustements dans votre mode de vie 
-                    pourraient faire une réelle différence. Rien d'alarmant, mais restons vigilants.
-                    """)
+                    st.warning("⚠️ Vigilance recommandée. Quelques ajustements peuvent suffire.")
                 else:
-                    st.error("""
-                    🚨 **Consultation recommandée** 
-                    Votre profil indique qu'il serait sage de consulter un professionnel de santé. 
-                    Ne tardez pas - une prise en charge précoce est toujours plus efficace.
-                    """)
-
-# Section de sauvegarde avec une approche plus personnelle
-st.markdown("---")
-save_button_col1, save_button_col2 = st.columns([1, 3])
-
-with save_button_col1:
-    save_evaluation = st.button(
-        "💾 Conserver cette évaluation", 
-        help="Gardez une trace de cette consultation pour votre suivi personnel"
-    )
-
-with save_button_col2:
-    if save_evaluation:
-        st.success("✅ Parfait ! Votre évaluation a été sauvegardée. Vous pouvez maintenant la partager avec votre médecin traitant.")
-        
-        # Création d'un rapport personnalisé
-        personal_report = {
-            'Date de consultation': datetime.now().strftime("%d/%m/%Y à %H:%M"),
-            'Nom du patient': prenom,
-            'Âge actuel': f"{age} ans",
-            'Niveau de risque évalué': f"{risk_percentage:.1f}%",
-            'Recommandation principale': 'Suivi médical conseillé' if prediction == 1 else 'Maintien des bonnes habitudes',
-            'Prochaine évaluation suggérée': 'Dans 6 mois' if prediction == 0 else 'Rapidement'
-        }
-        
-        st.markdown("### 📄 Votre rapport personnel de santé")
-        st.json(personal_report)
+                    st.error("🚨 Risque élevé. Consultez un professionnel de santé rapidement.")
 
 # Message de conclusion plus chaleureux
 st.markdown("---")
